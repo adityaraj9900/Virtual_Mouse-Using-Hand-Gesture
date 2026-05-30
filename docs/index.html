@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual Mouse — Hand Gesture Demo</title>
+<style>
+:root {
+  --bg:      #1e1e2e;
+  --surface: #313244;
+  --overlay: rgba(30,30,46,0.88);
+  --accent:  #89b4fa;
+  --green:   #a6e3a1;
+  --red:     #f38ba8;
+  --yellow:  #f9e2af;
+  --purple:  #cba6f7;
+  --orange:  #fab387;
+  --text:    #cdd6f4;
+  --muted:   #6c7086;
+  --border:  rgba(137,180,250,0.18);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;width:100vw}
+
+/* ── Permission screen ── */
+#perm{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:999}
+.perm-icon{font-size:72px;animation:wave 2s ease-in-out infinite}
+@keyframes wave{0%,100%{transform:rotate(0deg)}25%{transform:rotate(20deg)}75%{transform:rotate(-10deg)}}
+.perm-title{font-size:30px;font-weight:700;color:var(--accent)}
+.perm-sub{font-size:14px;color:var(--muted);text-align:center;max-width:400px;line-height:1.7}
+.perm-chips{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.chip{font-size:12px;padding:5px 12px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--text)}
+#start-btn{background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:13px 40px;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s;margin-top:6px}
+#start-btn:hover{opacity:.85}
+#load-msg{font-size:13px;color:var(--muted);display:none}
+
+/* ── App shell ── */
+#app{position:relative;width:100vw;height:100vh;display:none}
+video{position:absolute;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:0;pointer-events:none}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+
+/* ── Virtual cursor ── */
+#cur{position:absolute;width:22px;height:22px;border-radius:50%;border:2.5px solid var(--accent);background:radial-gradient(circle,rgba(137,180,250,.7),rgba(137,180,250,.1));box-shadow:0 0 14px rgba(137,180,250,.6);transform:translate(-50%,-50%);pointer-events:none;transition:transform .06s,border-color .1s,background .1s;z-index:90;display:none}
+#cur.click{border-color:var(--green);background:radial-gradient(circle,rgba(166,227,161,.8),rgba(166,227,161,.1));box-shadow:0 0 22px rgba(166,227,161,.7);transform:translate(-50%,-50%) scale(1.5)}
+#cur.rclick{border-color:var(--red);background:radial-gradient(circle,rgba(243,139,168,.7),rgba(243,139,168,.1));box-shadow:0 0 18px rgba(243,139,168,.6);transform:translate(-50%,-50%) scale(1.2)}
+#cur.drag{border-color:var(--purple);background:radial-gradient(circle,rgba(203,166,247,.7),rgba(203,166,247,.1));box-shadow:0 0 18px rgba(203,166,247,.6)}
+
+/* ── HUD top-left ── */
+#hud{position:absolute;top:14px;left:14px;background:var(--overlay);border:1px solid var(--border);border-radius:12px;padding:11px 15px;backdrop-filter:blur(12px);z-index:50;min-width:150px}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:5px;font-size:12px}
+.hrow:last-child{margin-bottom:0}
+.hlabel{color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-size:10px}
+.hval{font-weight:700;font-size:13px;color:var(--accent)}
+.hval.g{color:var(--green)}.hval.y{color:var(--yellow)}.hval.r{color:var(--red)}
+
+/* ── Gesture badge top-center ── */
+#badge{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:var(--overlay);border:1px solid var(--border);border-radius:24px;padding:8px 22px;backdrop-filter:blur(12px);z-index:50;text-align:center;min-width:220px;transition:border-color .15s}
+#gname{font-size:14px;font-weight:600;color:var(--accent);letter-spacing:.4px}
+#cbar-wrap{width:100%;height:4px;background:var(--surface);border-radius:2px;margin-top:5px;overflow:hidden}
+#cbar{height:100%;width:0%;background:var(--green);border-radius:2px;transition:width .08s,background .15s}
+
+/* ── Stats panel top-right ── */
+#stats{position:absolute;top:14px;right:14px;background:var(--overlay);border:1px solid var(--border);border-radius:12px;padding:13px 15px;backdrop-filter:blur(12px);z-index:50;width:190px}
+.stitle{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px}
+.srow{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.sname{color:var(--muted)}
+.sbar-bg{width:82px;height:5px;background:var(--surface);border-radius:3px;margin-top:3px}
+.sbar{height:100%;border-radius:3px;transition:width .35s}
+
+/* ── Gesture guide bottom-left ── */
+#guide{position:absolute;bottom:108px;left:14px;background:var(--overlay);border:1px solid var(--border);border-radius:10px;padding:10px 13px;backdrop-filter:blur(12px);z-index:50;font-size:11px;line-height:2}
+.grow{display:flex;gap:7px;color:var(--muted)}
+.gg{font-weight:600;color:var(--text);min-width:28px}
+
+/* ── Demo buttons bottom-center ── */
+#demo{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:12px;z-index:50}
+.dbtn{background:rgba(49,50,68,.9);border:1.5px solid var(--muted);border-radius:11px;padding:10px 17px;color:var(--text);font-size:12px;font-weight:500;backdrop-filter:blur(10px);cursor:pointer;transition:border-color .12s,background .12s,transform .08s;text-align:center;min-width:80px;user-select:none}
+.dbtn .di{font-size:20px;display:block;margin-bottom:3px}
+.dbtn.hov{border-color:var(--accent);background:rgba(137,180,250,.12);transform:scale(1.06)}
+.dbtn.act{border-color:var(--green);background:rgba(166,227,161,.15);transform:scale(.94)}
+
+/* ── Dwell ring on hovered button ── */
+.dwell-ring{position:absolute;inset:-4px;border-radius:14px;border:2px solid var(--accent);clip-path:inset(0 100% 0 0);transition:clip-path linear}
+
+/* ── Toast ── */
+#toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(166,227,161,.12);border:1.5px solid var(--green);border-radius:16px;padding:14px 30px;font-size:19px;font-weight:600;color:var(--green);pointer-events:none;z-index:200;opacity:0;transition:opacity .25s;backdrop-filter:blur(12px)}
+
+/* ── Scroll indicator ── */
+#scroll-ind{position:absolute;left:50%;transform:translateX(-50%);font-size:22px;font-weight:700;pointer-events:none;z-index:60;opacity:0;transition:opacity .15s}
+</style>
+</head>
+<body>
+
+<!-- Permission screen -->
+<div id="perm">
+  <div class="perm-icon">🤚</div>
+  <div class="perm-title">Virtual Mouse — Browser Demo</div>
+  <div class="perm-sub">Control on-screen elements with your hand. Runs entirely in your browser using MediaPipe — zero install.</div>
+  <div class="perm-chips">
+    <span class="chip">☝ Index → Move</span>
+    <span class="chip">✌ Pinch → Click</span>
+    <span class="chip">🤟 Three fingers → Scroll</span>
+    <span class="chip">☝🤙 Index+Pinky → Right-click</span>
+  </div>
+  <button id="start-btn" onclick="startApp()">Enable Camera &amp; Start →</button>
+  <div id="load-msg">Loading MediaPipe model…</div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <video id="vid" autoplay muted playsinline></video>
+  <canvas id="c"></canvas>
+  <div id="cur"></div>
+
+  <div id="hud">
+    <div class="hrow"><span class="hlabel">FPS</span><span class="hval g" id="hfps">—</span></div>
+    <div class="hrow"><span class="hlabel">Hands</span><span class="hval" id="hhands">0</span></div>
+    <div class="hrow"><span class="hlabel">Gestures</span><span class="hval y" id="htotal">0</span></div>
+  </div>
+
+  <div id="badge">
+    <div id="gname">Waiting for hand…</div>
+    <div id="cbar-wrap"><div id="cbar"></div></div>
+  </div>
+
+  <div id="stats">
+    <div class="stitle">Session Stats</div>
+    <div id="srows"><div style="color:var(--muted);font-size:12px;padding:6px 0;text-align:center">No gestures yet</div></div>
+  </div>
+
+  <div id="guide">
+    <div style="font-size:10px;font-weight:600;color:var(--accent);margin-bottom:2px;letter-spacing:1px">GESTURES</div>
+    <div class="grow"><span class="gg">☝</span> Move cursor</div>
+    <div class="grow"><span class="gg">✌</span> Click (fingers close)</div>
+    <div class="grow"><span class="gg">☝🤙</span> Right click</div>
+    <div class="grow"><span class="gg">🤟</span> Scroll</div>
+    <div class="grow"><span class="gg">✊</span> Drag</div>
+  </div>
+
+  <div id="demo">
+    <div class="dbtn" id="b-like"    data-msg="👍 Liked!"><span class="di">👍</span>Like</div>
+    <div class="dbtn" id="b-star"    data-msg="⭐ Starred!"><span class="di">⭐</span>Star</div>
+    <div class="dbtn" id="b-share"   data-msg="🔗 Shared!"><span class="di">🔗</span>Share</div>
+    <div class="dbtn" id="b-disco"   data-msg="🎉 Let's go!"><span class="di">🎉</span>Celebrate</div>
+    <div class="dbtn" id="b-reset"   data-msg="🔄 Reset!"><span class="di">🔄</span>Reset</div>
+  </div>
+
+  <div id="scroll-ind"></div>
+  <div id="toast"></div>
+</div>
+
+<!-- MediaPipe CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+'use strict';
+
+// ── Smoother (double-exponential / Holt's method) ─────────────────────────────
+class Smoother2D {
+  constructor(alpha=0.22, beta=0.07){ this.a=alpha; this.b=beta; this.lv=null; this.tr={x:0,y:0}; }
+  update(x,y){
+    if(!this.lv){ this.lv={x,y}; return {x,y}; }
+    const p={...this.lv};
+    this.lv.x = this.a*x + (1-this.a)*(p.x+this.tr.x);
+    this.lv.y = this.a*y + (1-this.a)*(p.y+this.tr.y);
+    this.tr.x = this.b*(this.lv.x-p.x) + (1-this.b)*this.tr.x;
+    this.tr.y = this.b*(this.lv.y-p.y) + (1-this.b)*this.tr.y;
+    return {x:this.lv.x, y:this.lv.y};
+  }
+  reset(){ this.lv=null; this.tr={x:0,y:0}; }
+}
+
+// ── Gesture detection ──────────────────────────────────────────────────────────
+const TIPS=[4,8,12,16,20];
+
+function fingersUp(lm, hand){
+  // MediaPipe receives unflipped frames; Right/Left labels are physical
+  const right = hand==='Right';
+  const f=[];
+  f.push((right ? lm[4].x>lm[3].x : lm[4].x<lm[3].x) ? 1 : 0);
+  for(let i=1;i<5;i++) f.push(lm[TIPS[i]].y < lm[TIPS[i]-2].y ? 1 : 0);
+  return f;
+}
+
+function dist2d(a,b,cw){ return Math.hypot((a.x-b.x)*cw,(a.y-b.y)*cw); }
+
+function classify(f, lm, cw){
+  const [t,i,m,r,p]=f;
+  if(i&&!m&&!r&&!p)               return 'MOVE';
+  if(i&&m&&!r&&!p){
+    return dist2d(lm[8],lm[12],cw)<48 ? 'CLICK' : 'PRECLICK';
+  }
+  if(i&&!m&&!r&&p)                return 'RCLICK';
+  if(i&&m&&r&&!p)                 return 'SCROLL';
+  if(!t&&!i&&!m&&!r&&!p)         return 'DRAG';
+  if(t&&i&&m&&r&&p)               return 'PALM';
+  return 'NONE';
+}
+
+// ── App state ─────────────────────────────────────────────────────────────────
+const S = {
+  sm: new Smoother2D(),
+  cx:0, cy:0, visible:false,
+  gesture:'NONE', prevGesture:'NONE',
+  counts:{}, total:0,
+  fps:0, lastT:0, handCount:0,
+  tClick:0, tRClick:0, tScroll:0,
+  scrollPanel:0,
+  dragging:false,
+};
+
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+let canvas,ctx,CAM_W,CAM_H;
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let _toastT;
+function toast(msg,col='#a6e3a1'){
+  const t=$('toast');
+  t.textContent=msg; t.style.color=col; t.style.borderColor=col;
+  t.style.opacity='1'; clearTimeout(_toastT);
+  _toastT=setTimeout(()=>t.style.opacity='0',1400);
+}
+
+// ── Button hover / dwell click ────────────────────────────────────────────────
+let hovBtn=null, dwellT=null, dwellStart=0;
+const DWELL=750;
+
+function btnAt(x,y){
+  for(const b of document.querySelectorAll('.dbtn')){
+    const r=b.getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return b;
+  }
+  return null;
+}
+
+function triggerBtn(btn){
+  if(!btn) return;
+  btn.classList.add('act');
+  setTimeout(()=>btn.classList.remove('act'),280);
+  if(btn.id==='b-reset'){ S.counts={}; S.total=0; renderStats(); $('htotal').textContent='0'; }
+  toast(btn.dataset.msg||'✓');
+  recordGesture('CLICK');
+}
+
+function updateHover(x,y,clicking){
+  const b=btnAt(x,y);
+  if(b!==hovBtn){
+    hovBtn?.classList.remove('hov'); clearTimeout(dwellT);
+    hovBtn=b;
+    if(b){ b.classList.add('hov'); dwellStart=performance.now(); dwellT=setTimeout(()=>{ if(hovBtn===b) triggerBtn(b); },DWELL); }
+  }
+  if(clicking&&b){ triggerBtn(b); hovBtn=null; b.classList.remove('hov'); clearTimeout(dwellT); }
+}
+
+// ── Stats panel ───────────────────────────────────────────────────────────────
+const COLORS=['#89b4fa','#a6e3a1','#f38ba8','#fab387','#f9e2af','#cba6f7','#74c7ec'];
+const LABELS={MOVE:'☝ Move',CLICK:'✌ Click',RCLICK:'☝🤙 R-Click',SCROLL:'🤟 Scroll',DRAG:'✊ Drag',PALM:'✋ Palm'};
+
+function recordGesture(g){
+  if(g==='NONE'||g==='PRECLICK') return;
+  S.counts[g]=(S.counts[g]||0)+1; S.total++;
+  $('htotal').textContent=S.total;
+  renderStats();
+}
+
+function renderStats(){
+  const entries=Object.entries(S.counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(!entries.length){ $('srows').innerHTML='<div style="color:var(--muted);font-size:12px;padding:6px 0;text-align:center">No gestures yet</div>'; return; }
+  const mx=entries[0][1];
+  $('srows').innerHTML=entries.map(([k,v],i)=>`
+    <div style="margin-bottom:6px">
+      <div class="srow"><span class="sname">${LABELS[k]||k}</span><span style="font-weight:700;color:${COLORS[i%7]}">${v}</span></div>
+      <div class="sbar-bg"><div class="sbar" style="width:${(v/mx*100).toFixed(0)}%;background:${COLORS[i%7]}"></div></div>
+    </div>`).join('');
+}
+
+// ── Gesture badge ─────────────────────────────────────────────────────────────
+const GINFO={
+  MOVE:    {label:'Moving Cursor',  col:'#89b4fa'},
+  CLICK:   {label:'✓ Click!',      col:'#a6e3a1'},
+  PRECLICK:{label:'Pre-click…',    col:'#f9e2af'},
+  RCLICK:  {label:'Right Click',   col:'#f38ba8'},
+  SCROLL:  {label:'Scrolling',     col:'#fab387'},
+  DRAG:    {label:'⠿ Drag',        col:'#cba6f7'},
+  PALM:    {label:'✋ Open Palm',  col:'#74c7ec'},
+  NONE:    {label:'Waiting…',      col:'#6c7086'},
+};
+
+function updateBadge(g, conf){
+  const info=GINFO[g]||GINFO.NONE;
+  const nm=$('gname'); nm.textContent=info.label; nm.style.color=info.col;
+  $('badge').style.borderColor=info.col+'44';
+  const bar=$('cbar'); bar.style.width=`${(conf*100).toFixed(0)}%`;
+  bar.style.background= conf>.8?'#a6e3a1':conf>.6?'#f9e2af':'#f38ba8';
+}
+
+// ── Frame reduction (active zone) ─────────────────────────────────────────────
+const FR=0.14; // 14% border on each side
+
+function mapCursor(lm8){
+  // Video CSS-flipped → displayed x = 1 - lm.x
+  const dx = 1 - lm8.x;
+  const dy = lm8.y;
+  const x = Math.max(0,Math.min(window.innerWidth,  (dx-FR)/(1-2*FR)*window.innerWidth));
+  const y = Math.max(0,Math.min(window.innerHeight, (dy-FR)/(1-2*FR)*window.innerHeight));
+  return S.sm.update(x,y);
+}
+
+// ── Main MediaPipe callback ───────────────────────────────────────────────────
+function onResults(res){
+  const now=performance.now();
+  S.fps = 1000/Math.max(now-S.lastT,1); S.lastT=now;
+  S.handCount=(res.multiHandLandmarks||[]).length;
+
+  // Draw mirrored frame + landmarks inside flipped ctx
+  ctx.save();
+  ctx.translate(CAM_W,0); ctx.scale(-1,1);
+  ctx.drawImage(res.image,0,0,CAM_W,CAM_H);
+
+  // Active zone border (in flipped space, looks correct)
+  ctx.strokeStyle='rgba(255,0,255,.45)'; ctx.lineWidth=2; ctx.setLineDash([8,5]);
+  ctx.strokeRect(FR*CAM_W, FR*CAM_H, (1-2*FR)*CAM_W, (1-2*FR)*CAM_H);
+  ctx.setLineDash([]);
+
+  let gesture='NONE', conf=0, isClicking=false;
+
+  if(res.multiHandLandmarks?.length){
+    const lm=res.multiHandLandmarks[0];
+    const hand=res.multiHandedness[0].label;
+    conf=res.multiHandedness[0].score;
+
+    // Landmarks (drawn in flipped space → aligns with mirrored video)
+    drawConnectors(ctx,lm,HAND_CONNECTIONS,{color:'rgba(137,180,250,.35)',lineWidth:2});
+    drawLandmarks(ctx,lm,{color:'rgba(203,166,247,.75)',lineWidth:1,radius:3});
+    TIPS.forEach(i=>{
+      ctx.beginPath();
+      ctx.arc(lm[i].x*CAM_W, lm[i].y*CAM_H, 6,0,Math.PI*2);
+      ctx.fillStyle='rgba(137,180,250,.9)'; ctx.fill();
+    });
+
+    const f=fingersUp(lm,hand);
+    gesture=classify(f,lm,CAM_W);
+    isClicking=(gesture==='CLICK');
+
+    // Cursor
+    const {x,y}=mapCursor(lm[8]);
+    S.cx=x; S.cy=y; S.visible=true;
+
+    // Click line indicator (in flipped space)
+    if(gesture==='CLICK'||gesture==='PRECLICK'){
+      const col=gesture==='CLICK'?'#a6e3a1':'#f9e2af';
+      ctx.strokeStyle=col; ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.moveTo(lm[8].x*CAM_W,lm[8].y*CAM_H);
+      ctx.lineTo(lm[12].x*CAM_W,lm[12].y*CAM_H);
+      ctx.stroke();
+      ctx.fillStyle=col; ctx.beginPath();
+      ctx.arc((lm[8].x+lm[12].x)/2*CAM_W,(lm[8].y+lm[12].y)/2*CAM_H,9,0,Math.PI*2); ctx.fill();
+
+      if(gesture==='CLICK'&&now-S.tClick>380){
+        S.tClick=now; recordGesture('CLICK');
+      }
+    }
+
+    // Scroll indicator
+    if(gesture==='SCROLL'&&now-S.tScroll>120){
+      S.tScroll=now;
+      const up=lm[8].y<0.5;
+      // Fake-scroll a panel if available, else show indicator
+      S.scrollPanel+=(up?-40:40);
+      showScrollInd(up);
+      recordGesture('SCROLL');
+    }
+
+    // Gesture count (transition-based, not per-frame)
+    if(gesture!==S.prevGesture&&gesture!=='NONE'&&gesture!=='PRECLICK'){
+      if(gesture!=='MOVE') recordGesture(gesture);
+      else if(!S.counts['MOVE']) S.counts['MOVE']=0;
+    }
+    if(gesture==='MOVE') S.counts['MOVE']=(S.counts['MOVE']||0);
+    S.prevGesture=gesture;
+
+  } else {
+    S.visible=false; S.sm.reset(); S.prevGesture='NONE';
+  }
+
+  ctx.restore();
+
+  // Virtual cursor DOM element
+  const cur=$('cur');
+  if(S.visible){
+    cur.style.display='block'; cur.style.left=S.cx+'px'; cur.style.top=S.cy+'px';
+    cur.className=isClicking?'click':gesture==='RCLICK'?'rclick':gesture==='DRAG'?'drag':'';
+  } else { cur.style.display='none'; }
+
+  // Button interaction
+  if(S.visible) updateHover(S.cx,S.cy,isClicking);
+
+  // HUD
+  $('hfps').textContent=Math.round(S.fps);
+  $('hhands').textContent=S.handCount;
+  updateBadge(gesture,conf);
+}
+
+// ── Scroll indicator ──────────────────────────────────────────────────────────
+let _scrollIndT;
+function showScrollInd(up){
+  const el=$('scroll-ind');
+  el.textContent=up?'▲ Scroll Up':'▼ Scroll Down';
+  el.style.color=up?'#a6e3a1':'#f9e2af';
+  el.style.top=up?'80px':'auto'; el.style.bottom=up?'auto':'80px';
+  el.style.opacity='1'; clearTimeout(_scrollIndT);
+  _scrollIndT=setTimeout(()=>el.style.opacity='0',700);
+}
+
+// ── Resize handler ────────────────────────────────────────────────────────────
+function resize(){
+  CAM_W=canvas.width=window.innerWidth;
+  CAM_H=canvas.height=window.innerHeight;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function startApp(){
+  $('start-btn').style.display='none';
+  const lm=$('load-msg'); lm.style.display='block';
+
+  canvas=$('c'); ctx=canvas.getContext('2d');
+  resize(); window.addEventListener('resize',resize);
+
+  const hands=new Hands({
+    locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  });
+  hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.7,minTrackingConfidence:.5});
+  hands.onResults(onResults);
+
+  try{
+    const camera=new Camera($('vid'),{
+      onFrame:async()=>{ await hands.send({image:$('vid')}); },
+      width:1280, height:720
+    });
+    await camera.start();
+  }catch(e){
+    lm.textContent='Camera access denied — allow camera and refresh.';
+    lm.style.color='#f38ba8'; return;
+  }
+
+  $('perm').style.display='none';
+  $('app').style.display='block';
+  renderStats();
+}
+</script>
+</body>
+</html>

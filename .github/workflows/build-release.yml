@@ -1,0 +1,146 @@
+name: Build Installers
+
+# Triggers on git tags: git tag v2.0.0 && git push --tags
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:   # also allow manual trigger from GitHub UI
+
+jobs:
+  # ── Windows .exe ────────────────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build .exe
+        run: python build/build.py --clean
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VirtualMouse-Windows
+          path: dist/VirtualMouse.exe
+
+  # ── macOS .app + .dmg ───────────────────────────────────────────────────────
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+          brew install create-dmg || true
+
+      - name: Build .app + .dmg
+        run: python build/build.py --clean --dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VirtualMouse-macOS
+          path: dist/VirtualMouse.dmg
+
+  # ── Linux binary ────────────────────────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libglib2.0-0 python3-tk upx
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build binary
+        run: python build/build.py --clean --zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VirtualMouse-Linux
+          path: dist/VirtualMouse-linux.zip
+
+  # ── Create GitHub Release with all installers ───────────────────────────────
+  release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Virtual Mouse ${{ github.ref_name }}"
+          body: |
+            ## Virtual Mouse ${{ github.ref_name }}
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | Windows  | `VirtualMouse.exe` — run directly, no Python needed |
+            | macOS    | `VirtualMouse.dmg` — drag to Applications |
+            | Linux    | `VirtualMouse-linux.zip` — unzip and run |
+
+            ### What's included
+            - Kalman filter cursor smoothing
+            - Dual-hand gesture support
+            - Voice commands (optional)
+            - Settings GUI & Analytics dashboard
+            - Macro / plugin system
+            - Adaptive per-user calibration
+
+            ### Gesture Reference
+            | Hand | Gesture | Action |
+            |------|---------|--------|
+            | Right | ☝ Index only | Move cursor |
+            | Right | ✌ Index+Middle (close) | Left click |
+            | Right | ☝🤙 Index+Pinky | Right click |
+            | Right | 🤟 Three fingers | Scroll |
+            | Right | ✊ Fist | Drag |
+            | Left  | 👍 Thumb | Zoom in |
+            | Left  | 🤙 Pinky | Zoom out |
+            | Left  | ✋ Open palm | Switch window |
+          files: |
+            artifacts/VirtualMouse-Windows/VirtualMouse.exe
+            artifacts/VirtualMouse-macOS/VirtualMouse.dmg
+            artifacts/VirtualMouse-Linux/VirtualMouse-linux.zip
+          draft: false
+          prerelease: false

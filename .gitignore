@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/_pyinstaller_work/
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# PyInstaller output (keep spec, ignore binaries)
+dist/
+build/_pyinstaller_work/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+modules.xml
+*.xml
+pyvenv.cfg
+
+# Runtime-generated data (user-specific, changes per session)
+analytics/
+calibration/
+screenshots/
+config/settings.json
+
+# Keep bundled defaults
+!profiles/
+!macros/
+
+# macOS
+.DS_Store
+.AppleDouble
+*.dmg
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Model artifacts (large — tracked via Git LFS or excluded)
+tools/gesture_data/
+tools/models/
+*.tflite
+*.pkl
+*.h5
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/

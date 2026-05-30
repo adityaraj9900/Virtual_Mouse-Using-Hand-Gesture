@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Syntax & import check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lightweight deps (no heavy ML libs needed for syntax check)
+        run: pip install pyflakes
+
+      - name: Check Python syntax on all source files
+        run: |
+          python -m py_compile \
+            main.py \
+            HandTracking.py \
+            "Virtual Mouse.py" \
+            src/hand_tracking.py \
+            src/kalman_filter.py \
+            src/settings_manager.py \
+            src/gesture_profiles.py \
+            src/voice_commands.py \
+            src/analytics.py \
+            src/macro_system.py \
+            src/calibration.py \
+            src/collaboration_server.py \
+            gui/settings_gui.py \
+            gui/analytics_gui.py \
+            tools/collect_gesture_data.py \
+            tools/train_gesture_model.py \
+            build/build.py \
+            build/hooks/hook-mediapipe.py
+          echo "All files passed syntax check."
+
+      - name: Pyflakes static analysis
+        run: |
+          python -m pyflakes \
+            src/kalman_filter.py \
+            src/settings_manager.py \
+            src/gesture_profiles.py \
+            src/analytics.py \
+            src/macro_system.py \
+            src/calibration.py || true

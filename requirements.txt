@@ -1,0 +1,16 @@
+# Core
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+pyautogui>=0.9.54
+Pillow>=10.0.0
+
+# Analytics charts (optional but recommended)
+matplotlib>=3.7.0
+
+# Voice commands (optional)
+SpeechRecognition>=3.10.0
+# pyaudio>=0.2.13  # uncomment if your OS supports it; on macOS use: brew install portaudio && pip install pyaudio
+
+# Build installer (only needed when packaging)
+# pyinstaller>=6.0.0

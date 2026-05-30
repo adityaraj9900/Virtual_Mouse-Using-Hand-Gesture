@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "virtual-mouse-gesture"
+version = "2.0.0"
+description = "Control your computer with hand gestures — webcam-based virtual mouse"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [
+  { name = "adityaraj9900", url = "https://github.com/adityaraj9900" }
+]
+keywords = ["virtual mouse", "hand gesture", "mediapipe", "opencv", "computer vision", "accessibility"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: End Users/Desktop",
+  "Topic :: Multimedia :: Video :: Capture",
+  "Topic :: Scientific/Engineering :: Image Recognition",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "opencv-python>=4.8.0",
+  "mediapipe>=0.10.0",
+  "numpy>=1.24.0",
+  "pyautogui>=0.9.54",
+  "Pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+analytics = ["matplotlib>=3.7.0"]
+voice    = ["SpeechRecognition>=3.10.0"]
+build    = ["pyinstaller>=6.0.0"]
+all      = ["matplotlib>=3.7.0", "SpeechRecognition>=3.10.0"]
+
+[project.scripts]
+virtual-mouse = "main:main"
+
+[project.urls]
+Homepage   = "https://github.com/adityaraj9900/Virtual_Mouse-Using-Hand-Gesture"
+Repository = "https://github.com/adityaraj9900/Virtual_Mouse-Using-Hand-Gesture"
+Issues     = "https://github.com/adityaraj9900/Virtual_Mouse-Using-Hand-Gesture/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "gui*"]
+
+[tool.setuptools.package-data]
+"*" = ["profiles/*.json", "macros/*.json"]

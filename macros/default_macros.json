@@ -1,0 +1,102 @@
+{
+  "zoom_in": {
+    "steps": [
+      {
+        "type": "hotkey",
+        "keys": [
+          "ctrl",
+          "+"
+        ]
+      }
+    ]
+  },
+  "zoom_out": {
+    "steps": [
+      {
+        "type": "hotkey",
+        "keys": [
+          "ctrl",
+          "-"
+        ]
+      }
+    ]
+  },
+  "switch_window": {
+    "steps": [
+      {
+        "type": "hotkey",
+        "keys": [
+          "alt",
+          "tab"
+        ]
+      }
+    ]
+  },
+  "select_all": {
+    "steps": [
+      {
+        "type": "hotkey",
+        "keys": [
+          "ctrl",
+          "a"
+        ]
+      }
+    ]
+  },
+  "copy": {
+    "steps": [
+      {
+        "type": "hotkey",
+        "keys": [
+          "ctrl",
+          "c"
+        ]
+      }
+    ]
+  },
+  "paste": {
+    "steps": [
+      {
+        "type": "hotkey",
+        "keys": [
+          "ctrl",
+          "v"
+        ]
+      }
+    ]
+  },
+  "undo": {
+    "steps": [
+      {
+        "type": "hotkey",
+        "keys": [
+          "ctrl",
+          "z"
+        ]
+      }
+    ]
+  },
+  "media_play_pause": {
+    "steps": [
+      {
+        "type": "key",
+        "key": "playpause"
+      }
+    ]
+  },
+  "double_click": {
+    "steps": [
+      {
+        "type": "double_click"
+      }
+    ]
+  },
+  "screenshot": {
+    "steps": [
+      {
+        "type": "screenshot",
+        "save_path": "screenshots/"
+      }
+    ]
+  }
+}
